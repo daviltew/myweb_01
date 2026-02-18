@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mano Receptai</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #ffe2e2, #fff9f0);
+      color: #333;
+    }
+
+    .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      max-width: 1000px;
+      margin: 50px auto;
+      gap: 40px;
+      flex-wrap: wrap;
+      padding: 0 20px;
+    }
+
+    .main {
+      flex: 1;
+      text-align: left;
+      min-width: 300px;
+    }
+
+    h1 {
+      font-size: 3em;
+      color: #e76f51;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    select {
+      padding: 10px 15px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 20px;
+    }
+
+    select:hover {
+      box-shadow: 2px 4px 15px rgba(0,0,0,0.2);
+    }
+
+    #recipe-text {
+      background-color: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      font-size: 16px;
+      line-height: 1.6;
+      color: #444;
+    }
+
+    #recipe-text h2 {
+      color: #e76f51;
+      text-align: center;
+    }
+
+    ul, ol {
+      margin-left: 20px;
+    }
+
+    .images {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+      min-width: 250px;
+    }
+
+    .images img {
+      width: 250px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+    }
+
+    .images img:hover {
+      transform: scale(1.05);
+    }
+
+    @media (max-width: 800px) {
+      .container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .main, .images {
+        text-align: center;
+      }
+
+      .images img {
+        width: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="main">
+      <h1>Sveiki atvykę į Mano Receptus</h1>
+
+      <label for="recipes">Receptai:</label>
+      <select id="recipes" onchange="rodytiRecepta()">
+        <option value="">--Pasirinkite receptą--</option>
+        <option value="kebab">Kebabas</option>
+      </select>
+
+      <div id="recipe-text"></div>
+    </div>
+
+    <div class="images" id="recipe-images">
+      <!-- Images will appear here -->
+    </div>
+  </div>
+
+  <script>
+    let imageIndex = 0;
+    let imageInterval;
+
+    function rodytiRecepta() {
+      const recipeText = document.getElementById('recipe-text');
+      const imagesDiv = document.getElementById('recipe-images');
+      const selected = document.getElementById('recipes').value;
+
+      clearInterval(imageInterval); // stop previous rotation
+      imagesDiv.innerHTML = ""; // clear images
+
+      if (selected === "kebab") {
+        recipeText.innerHTML = `
+          <h2>Kebabo receptas</h2>
+          <p><strong>Ingredientai:</strong></p>
+          <ul>
+            <li>500g maltos mėsos (aviena arba jautiena)</li>
+            <li>1 svogūnas, smulkiai supjaustytas</li>
+            <li>2 česnako skiltelės, smulkintos</li>
+            <li>1 arbatinis šaukštelis paprikos</li>
+            <li>1 arbatinis šaukštelis kumino</li>
+            <li>Druska ir pipirai pagal skonį</li>
+            <li>Medinės iešmeliai</li>
+          </ul>
+          <p><strong>Paruošimas:</strong></p>
+          <ol>
+            <li>Visus ingredientus sumaišykite dubenyje.</li>
+            <li>Formuokite mėsos masę aplink iešmelius.</li>
+            <li>Kepti ant vidutinės ugnies 10-15 minučių, pasukant kartais.</li>
+            <li>Patiekti karštą su duona arba salotomis.</li>
+          </ol>
+        `;
+
+        const images = ["kebab_1.jpg", "kebab_2.jpg", "kebab_3.jpg"];
+
+        const imgElement = document.createElement("img");
+        imgElement.src = images[0];
+        imagesDiv.appendChild(imgElement);
+
+        imageIndex = 0;
+        imageInterval = setInterval(() => {
+          imageIndex = (imageIndex + 1) % images.length;
+          imgElement.src = images[imageIndex];
+        }, 2000);
+
+      } else {
+        recipeText.innerHTML = "";
+      }
+    }
+  </script>
+
+</body>
+</html>
