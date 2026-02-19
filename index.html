@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="lt">
 <head>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Basic Forum Styling */
+    #forum-container { margin-top: 40px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    #messages-list { height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column-reverse; }
+    .msg { margin-bottom: 10px; padding: 5px; border-bottom: 1px solid #f9f9f9; }
+    .msg b { color: #e76f51; }
+    input { padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin-right: 5px; }
+  </style>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mano Receptai</title>
@@ -113,7 +124,16 @@
     }
   </style>
 </head>
+
 <body>
+
+  <div id="forum-container">
+  <h3>Bendruomenės Forumas</h3>
+  <div id="messages-list">Kraunama...</div>
+  <input type="text" id="username" placeholder="Vardas" style="width: 20%;">
+  <input type="text" id="message-input" placeholder="Rašykite žinutę..." style="width: 60%;">
+  <button onclick="sendMessage()" style="padding: 10px 20px; background: #e76f51; color: white; border: none; border-radius: 5px; cursor: pointer;">Siųsti</button>
+  </div>
 
   <div class="container">
     <div class="main">
@@ -134,6 +154,56 @@
   </div>
 
   <script>
+
+    // Initialize Supabase
+    // 1. Initialize Supabase
+const _supabase = supabase.createClient(
+  'https://nxhkyttfqabqwarawwke.supabase.co', 
+  'sb_publishable_z-pk1YkUb9vP43hUmDsgJg_U_cw2GXs'
+);
+
+// Fetch and display messages
+async function loadMessages() {
+    const { data, error } = await _supabase
+        .from('forum_messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) console.error('Error:', error);
+    
+    const list = document.getElementById('messages-list');
+    list.innerHTML = data.map(m => `
+        <div class="msg">
+            <b>${m.username}:</b> ${m.content}
+        </div>
+    `).join('');
+}
+
+// Send a new message
+async function sendMessage() {
+    const user = document.getElementById('username').value || "Anonimas";
+    const content = document.getElementById('message-input').value;
+
+    if (!content) return;
+
+    const { error } = await _supabase
+        .from('forum_messages')
+        .insert([{ username: user, content: content }]);
+
+    if (error) {
+        alert("Klaida siunčiant!");
+    } else {
+        document.getElementById('message-input').value = "";
+        loadMessages(); // Refresh list
+    }
+}
+
+    // Load messages when page opens
+    loadMessages();
+
+    // Optional: Auto-refresh every 5 seconds
+    setInterval(loadMessages, 5000);
+
     let imageIndex = 0;
     let imageInterval;
 
