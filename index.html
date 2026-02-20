@@ -193,23 +193,35 @@
     }
 
     async function handleAuth(type) {
-      const user = document.getElementById('reg-user').value.trim();
-      const rawPass = document.getElementById('reg-pass').value.trim();
+    // 1. Get and clean the input
+    let user = document.getElementById('reg-user').value;
+    const rawPass = document.getElementById('reg-pass').value.trim();
 
-      if (user.length < 3 || rawPass.length < 3) return alert("Per trumpi duomenys!");
-      const passHash = CryptoJS.SHA256(rawPass).toString();
+    // 2. REGEX: Only allow letters (a-z, A-Z) and numbers (0-9)
+    // This blocks invisible characters, emojis, and symbols.
+    const validUsername = /^[a-zA-Z0-9]+$/;
 
-      if (type === 'register') {
+    if (!validUsername.test(user)) {
+        return alert("Vardas gali turėti tik raides ir skaičius (be tarpų ar simbolių)!");
+    }
+
+    if (user.length < 3 || rawPass.length < 3) {
+        return alert("Per trumpi duomenys!");
+    }
+
+    const passHash = CryptoJS.SHA256(rawPass).toString();
+
+    if (type === 'register') {
         const { error } = await _supabase.from('profiles').insert([{ username: user, password: passHash }]);
         if (error) alert("Vardas užimtas!"); else alert("Sėkminga! Prisijunkite.");
-      } else {
+    } else {
         const { data } = await _supabase.from('profiles').select('*').eq('username', user).eq('password', passHash).single();
         if (data) {
-          localStorage.setItem('logged_user', user);
-          location.reload();
+            localStorage.setItem('logged_user', user);
+            location.reload();
         } else alert("Neteisingi duomenys!");
-      }
     }
+}
 
     function logout() { localStorage.removeItem('logged_user'); location.reload(); }
 
