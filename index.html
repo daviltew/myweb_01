@@ -86,22 +86,19 @@
       padding: 10px; margin-bottom: 10px; background: var(--input-bg); border-radius: 8px;
     }
     
-    /* FIX: Word wrap for long strings like _________ */
     .msg { 
         border-bottom: 1px solid var(--border-color); 
         padding: 8px 0; 
         font-size: 0.9em; 
         overflow-wrap: break-word;
-        word-wrap: break-word;
-        word-break: break-word;
     }
 
-    #char-count {
+    .counter-text {
         font-size: 0.75em;
         text-align: right;
         display: block;
         margin-top: -8px;
-        margin-bottom: 5px;
+        margin-bottom: 10px;
         color: var(--text-muted);
     }
 
@@ -126,10 +123,24 @@
       <div class="auth-box">
         <label>Pasirinkite patiekalą:</label>
         <select id="recipes" onchange="rodytiRecepta()">
-          <option value="">--Pasirinkite receptą--</option>
-          <option value="kebab">Kebabas</option>
+          <option value="">--Kraunama...--</option>
         </select>
       </div>
+      
+      <div id="add-recipe-section" class="auth-box" style="display: none; margin-top: 20px;">
+        <h3>Dalinkitės savo receptu</h3>
+        <input type="text" id="new-recipe-title" placeholder="Recepto pavadinimas">
+        
+        <label style="font-size: 0.8em; margin-bottom: 5px; display: block;">Nuotrauka (Maks. 1MB):</label>
+        <input type="file" id="new-recipe-image" accept="image/*" style="font-size: 0.8em;">
+        
+        <textarea id="new-recipe-body" placeholder="Ingredientai ir gaminimo eiga..." maxlength="500" oninput="updateRecipeCounter()"
+                  style="width: 100%; height: 120px; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main); margin-bottom: 10px; font-family: inherit; box-sizing: border-box;"></textarea>
+        <span id="recipe-char-count" class="counter-text">0 / 500</span>
+
+        <button id="save-recipe-btn" onclick="saveRecipe()" style="width: 100%; background: #2a9d8f; color: white;">Paskelbti receptą</button>
+      </div>
+
       <div id="recipe-content-area"></div>
     </div>
 
@@ -156,7 +167,7 @@
       <div id="messages-list">Kraunama...</div>
       <input type="text" id="username-display" placeholder="Prisijunkite" readonly>
       <input type="text" id="message-input" placeholder="Rašykite žinutę..." maxlength="100" oninput="updateCounter()">
-      <span id="char-count">0 / 100</span>
+      <span id="char-count" class="counter-text">0 / 100</span>
       <button id="send-btn" onclick="sendMessage()" style="width: 100%; background: var(--accent); color: white;">Siųsti</button>
     </div>
   </div>
@@ -167,7 +178,7 @@
       'sb_publishable_z-pk1YkUb9vP43hUmDsgJg_U_cw2GXs'
     );
 
-    const FORBIDDEN_WORDS = ["nigger", "niger", "niga", "nigga",]; 
+    const FORBIDDEN_WORDS = ["nigger", "niger", "niga", "nigga"]; 
 
     function filterText(text) {
         let filtered = text;
@@ -188,55 +199,50 @@
         const input = document.getElementById('message-input');
         const counter = document.getElementById('char-count');
         counter.innerText = `${input.value.length} / 100`;
-        counter.style.color = input.value.length >= 90 ? "#e76f51" : "inherit";
+    }
+
+    function updateRecipeCounter() {
+        const input = document.getElementById('new-recipe-body');
+        const counter = document.getElementById('recipe-char-count');
+        counter.innerText = `${input.value.length} / 500`;
+        counter.style.color = input.value.length >= 450 ? "#e76f51" : "inherit";
     }
 
     async function handleAuth(type) {
-    // 1. Get and clean the input
-    let user = document.getElementById('reg-user').value;
-    const rawPass = document.getElementById('reg-pass').value.trim();
+        let user = document.getElementById('reg-user').value;
+        const rawPass = document.getElementById('reg-pass').value.trim();
+        const validUsername = /^[a-zA-Z0-9]+$/;
 
-    // 2. REGEX: Only allow letters (a-z, A-Z) and numbers (0-9)
-    // This blocks invisible characters, emojis, and symbols.
-    const validUsername = /^[a-zA-Z0-9]+$/;
+        if (!validUsername.test(user)) return alert("Vardas gali turėti tik raides ir skaičius!");
+        if (user.length < 3 || rawPass.length < 3) return alert("Per trumpi duomenys!");
 
-    if (!validUsername.test(user)) {
-        return alert("Vardas gali turėti tik raides ir skaičius (be tarpų ar simbolių)!");
+        const passHash = CryptoJS.SHA256(rawPass).toString();
+
+        if (type === 'register') {
+            const { error } = await _supabase.from('profiles').insert([{ username: user, password: passHash }]);
+            if (error) alert("Vardas užimtas!"); else alert("Sėkminga! Prisijunkite.");
+        } else {
+            const { data } = await _supabase.from('profiles').select('*').eq('username', user).eq('password', passHash).single();
+            if (data) {
+                localStorage.setItem('logged_user', user);
+                location.reload();
+            } else alert("Neteisingi duomenys!");
+        }
     }
-
-    if (user.length < 3 || rawPass.length < 3) {
-        return alert("Per trumpi duomenys!");
-    }
-
-    const passHash = CryptoJS.SHA256(rawPass).toString();
-
-    if (type === 'register') {
-        const { error } = await _supabase.from('profiles').insert([{ username: user, password: passHash }]);
-        if (error) alert("Vardas užimtas!"); else alert("Sėkminga! Prisijunkite.");
-    } else {
-        const { data } = await _supabase.from('profiles').select('*').eq('username', user).eq('password', passHash).single();
-        if (data) {
-            localStorage.setItem('logged_user', user);
-            location.reload();
-        } else alert("Neteisingi duomenys!");
-    }
-}
 
     function logout() { localStorage.removeItem('logged_user'); location.reload(); }
 
     async function loadMessages() {
-  const { data } = await _supabase.from('forum_messages').select('*').order('created_at', { ascending: false });
-  if (data) {
-    document.getElementById('messages-list').innerHTML = data.map(m => {
-      const userColor = getUsernameColor(m.username); // Get the unique color
-      return `
-        <div class="msg">
-          <b style="color: ${userColor}">${m.username}:</b> ${m.content}
-        </div>
-      `;
-    }).join('');
-  }
-}
+      const { data } = await _supabase.from('forum_messages').select('*').order('created_at', { ascending: true });
+      if (data) {
+        const list = document.getElementById('messages-list');
+        list.innerHTML = data.map(m => {
+          const userColor = getUsernameColor(m.username);
+          return `<div class="msg"><b style="color: ${userColor}">${m.username}:</b> ${m.content}</div>`;
+        }).join('');
+        list.scrollTop = list.scrollHeight;
+      }
+    }
 
     async function sendMessage() {
       const btn = document.getElementById('send-btn');
@@ -245,7 +251,6 @@
 
       if (!user) return alert("Pirmiausia prisijunkite!");
       if (!input.value.trim() || btn.disabled) return;
-      if (input.value.length > 100) return alert("Per ilga žinutė!");
 
       const cleanContent = filterText(input.value.trim());
       btn.disabled = true;
@@ -255,10 +260,9 @@
       if (!error) {
         input.value = "";
         updateCounter();
-        loadMessages();
         startCooldown(btn);
       } else {
-        alert("Klaida siunčiant!");
+        alert("Klaida!");
         btn.disabled = false;
       }
     }
@@ -277,61 +281,170 @@
         }, 1000);
     }
 
-    document.getElementById('message-input').addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') sendMessage();
-    });
+    async function loadDropdownRecipes() {
+        const select = document.getElementById('recipes');
+        const currentSelection = select.value;
+        select.innerHTML = `<option value="">--Pasirinkite receptą--</option><option value="kebab">Kebabas (Originalus)</option>`;
 
-    let imageInterval;
-    function rodytiRecepta() {
-      const area = document.getElementById('recipe-content-area');
-      const selected = document.getElementById('recipes').value;
-      clearInterval(imageInterval);
-
-      if (selected === "kebab") {
-        area.innerHTML = `
-          <div class="recipe-display">
-            <div class="recipe-image-side"><img id="rot-img" src="kebab_1.jpg"></div>
-            <div class="recipe-text-side">
-              <h2>Namų gamybos Kebabas</h2>
-              <p><strong>Ingredientai:</strong> 500g mėsos, lavašas, daržovės, padažas.</p>
-              <p>Paruoškite mėsą su prieskoniais, kepkite 15 min. Įvyniokite į lavašą su daržovėmis.</p>
-            </div>
-          </div>`;
-        const imgs = ["kebab_1.jpg", "kebab_2.jpg", "kebab_3.jpg"];
-        let i = 0;
-        imageInterval = setInterval(() => {
-          i = (i + 1) % imgs.length;
-          const el = document.getElementById('rot-img');
-          if(el) { el.style.opacity = 0; setTimeout(() => { el.src = imgs[i]; el.style.opacity = 1; }, 400); }
-        }, 3000);
-      } else area.innerHTML = "";
+        const { data } = await _supabase.from('user_recipes').select('id, title');
+        if (data) {
+            data.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.title;
+                select.appendChild(opt);
+            });
+        }
+        select.value = currentSelection;
     }
 
-    window.onload = () => {
-      const user = localStorage.getItem('logged_user');
-      if (user) {
-        document.getElementById('auth-inputs').style.display = 'none';
-        document.getElementById('logged-in-ui').style.display = 'block';
-        document.getElementById('current-user-display').innerText = user;
-        document.getElementById('username-display').value = user;
-        document.getElementById('auth-status').innerText = "Paskyra";
-      }
-      loadMessages();
-      setInterval(loadMessages, 5000);
-    };
+    async function saveRecipe() {
+        const title = document.getElementById('new-recipe-title').value.trim();
+        const body = document.getElementById('new-recipe-body').value.trim();
+        const fileInput = document.getElementById('new-recipe-image');
+        const user = localStorage.getItem('logged_user');
+        const btn = document.getElementById('save-recipe-btn');
+        const select = document.getElementById('recipes');
+
+        if (!title || !body) return alert("Užpildykite pavadinimą ir eigą!");
+        if (body.length > 500) return alert("Receptas per ilgas (maks. 500 simb.)!");
+
+        const existingOptions = Array.from(select.options).map(opt => opt.textContent.toLowerCase());
+        if (existingOptions.includes(title.toLowerCase())) return alert("Tokį receptą jau turite!");
+
+        btn.disabled = true;
+        btn.innerText = "Saugoma...";
+
+        let base64Image = null;
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            if (file.size > 1024 * 1024) { 
+                btn.disabled = false;
+                btn.innerText = "Paskelbti receptą";
+                return alert("Nuotrauka per didelė (Maks 1MB)!");
+            }
+            base64Image = await stripMetadata(file);
+        }
+
+        const { error } = await _supabase.from('user_recipes').insert([
+            { title: title, instructions: body, created_by: user, image_data: base64Image }
+        ]);
+
+        if (!error) {
+            alert("Sėkmingai pridėta!");
+            document.getElementById('new-recipe-title').value = "";
+            document.getElementById('new-recipe-body').value = "";
+            document.getElementById('new-recipe-image').value = "";
+            updateRecipeCounter();
+            btn.disabled = false;
+            btn.innerText = "Paskelbti receptą";
+        } else {
+            alert("Klaida: " + error.message);
+            btn.disabled = false;
+            btn.innerText = "Paskelbti receptą";
+        }
+    }
+
+    async function stripMetadata(file) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const tempUrl = URL.createObjectURL(file);
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(tempUrl);
+                resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+            };
+            img.src = tempUrl;
+        });
+    }
+
+    async function rodytiRecepta() {
+        const area = document.getElementById('recipe-content-area');
+        const selected = document.getElementById('recipes').value;
+        const user = localStorage.getItem('logged_user');
+        clearInterval(imageInterval);
+
+        if (!selected) { area.innerHTML = ""; return; }
+
+        if (selected === "kebab") {
+            area.innerHTML = `<div class="recipe-display"><div class="recipe-image-side"><img id="rot-img" src="kebab_1.jpg"></div><div class="recipe-text-side"><h2>Kebabas</h2><p><strong>Ingredientai:</strong> Mėsa, lavašas, daržovės, padažas.</p><p><strong>Paruošimas:</strong> Skanaus!</p></div></div>`;
+            const imgs = ["kebab_1.jpg", "kebab_2.jpg", "kebab_3.jpg"];
+            let i = 0;
+            imageInterval = setInterval(() => {
+                i = (i + 1) % imgs.length;
+                const el = document.getElementById('rot-img');
+                if(el) { el.style.opacity = 0; setTimeout(() => { el.src = imgs[i]; el.style.opacity = 1; }, 400); }
+            }, 3000);
+        } else {
+            const { data } = await _supabase.from('user_recipes').select('*').eq('id', selected).single();
+            if (data) {
+                const imgTag = data.image_data ? `<img src="${data.image_data}">` : `<div style="height:200px; background:#f0f0f0; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:3em;">🍲</div>`;
+                
+                area.innerHTML = `
+                  <div class="recipe-display">
+                    <div class="recipe-image-side">${imgTag}</div>
+                    <div class="recipe-text-side">
+                      <h2>${data.title}</h2>
+                      <p style="white-space: pre-wrap; word-break: break-word;">${filterText(data.instructions)}</p>
+                      <p style="font-size: 0.8em; border-top: 1px solid var(--border-color); padding-top: 10px;">Autorius: <b style="color:${getUsernameColor(data.created_by)}">${data.created_by}</b></p>
+                      ${data.created_by === user ? `<button onclick="deleteRecipe('${data.id}')" style="background:#e76f51; color:white; width:100%; margin-top:10px;">Ištrinti</button>` : ''}
+                    </div>
+                  </div>`;
+            }
+        }
+    }
+
+    async function deleteRecipe(id) {
+        if (!confirm("Tikrai trinti?")) return;
+        const { error } = await _supabase.from('user_recipes').delete().eq('id', id);
+        if (!error) {
+            document.getElementById('recipe-content-area').innerHTML = ""; 
+            alert("Ištrinta sėkmingai!");
+        }
+    }
+
+    function setupRealtimeListener() {
+        _supabase
+            .channel('recipe-updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'user_recipes' }, () => {
+                loadDropdownRecipes();
+            })
+            .subscribe();
+
+        _supabase
+            .channel('forum-updates')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'forum_messages' }, () => {
+                loadMessages();
+            })
+            .subscribe();
+    }
 
     function getUsernameColor(username) {
-    let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+        let hash = 0;
+        for (let i = 0; i < (username || "").length; i++) {
+            hash = username.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return `hsl(${Math.abs(hash) % 360}, 70%, 45%)`;
     }
-    // We use HSL: 
-    // Hue: 0-360 (based on hash)
-    // Saturation: 70% (vivid)
-    // Lightness: 45% (dark enough to read on light, bright enough for dark)
-    return `hsl(${Math.abs(hash) % 360}, 70%, 45%)`;
-}
 
+    let imageInterval;
+    window.onload = () => {
+        const user = localStorage.getItem('logged_user');
+        if (user) {
+            document.getElementById('auth-inputs').style.display = 'none';
+            document.getElementById('logged-in-ui').style.display = 'block';
+            document.getElementById('current-user-display').innerText = user;
+            document.getElementById('username-display').value = user;
+            document.getElementById('add-recipe-section').style.display = 'block';
+        }
+        loadMessages();
+        loadDropdownRecipes();
+        setupRealtimeListener();
+    };
   </script>
 </body>
 </html>
