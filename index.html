@@ -95,7 +95,6 @@
         word-wrap: break-word;
         word-break: break-word;
     }
-    .msg b { color: var(--accent); }
 
     #char-count {
         font-size: 0.75em;
@@ -226,13 +225,18 @@
     function logout() { localStorage.removeItem('logged_user'); location.reload(); }
 
     async function loadMessages() {
-      const { data } = await _supabase.from('forum_messages').select('*').order('created_at', { ascending: false });
-      if (data) {
-        document.getElementById('messages-list').innerHTML = data.map(m => `
-          <div class="msg"><b>${m.username}:</b> ${m.content}</div>
-        `).join('');
-      }
-    }
+  const { data } = await _supabase.from('forum_messages').select('*').order('created_at', { ascending: false });
+  if (data) {
+    document.getElementById('messages-list').innerHTML = data.map(m => {
+      const userColor = getUsernameColor(m.username); // Get the unique color
+      return `
+        <div class="msg">
+          <b style="color: ${userColor}">${m.username}:</b> ${m.content}
+        </div>
+      `;
+    }).join('');
+  }
+}
 
     async function sendMessage() {
       const btn = document.getElementById('send-btn');
@@ -315,6 +319,19 @@
       loadMessages();
       setInterval(loadMessages, 5000);
     };
+
+    function getUsernameColor(username) {
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    // We use HSL: 
+    // Hue: 0-360 (based on hash)
+    // Saturation: 70% (vivid)
+    // Lightness: 45% (dark enough to read on light, bright enough for dark)
+    return `hsl(${Math.abs(hash) % 360}, 70%, 45%)`;
+}
+
   </script>
 </body>
 </html>
