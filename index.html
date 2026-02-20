@@ -284,7 +284,8 @@
     async function loadDropdownRecipes() {
         const select = document.getElementById('recipes');
         const currentSelection = select.value;
-        select.innerHTML = `<option value="">--Pasirinkite receptą--</option><option value="kebab">Kebabas (Originalus)</option>`;
+        
+        select.innerHTML = '<option value="">--Pasirinkite receptą--</option><option value="kebab">Kebabas (Originalus)</option>';
 
         const { data } = await _supabase.from('user_recipes').select('id, title');
         if (data) {
@@ -338,8 +339,13 @@
             updateRecipeCounter();
             btn.disabled = false;
             btn.innerText = "Paskelbti receptą";
+            // Handled by Realtime listener
         } else {
-            alert("Klaida: " + error.message);
+            if (error.message.includes('Pasiekėte limitą')) {
+                alert("Klaida: Jūs jau turite 10 receptų. Ištrinkite seną, kad galėtumėte pridėti naują.");
+            } else {
+                alert("Klaida: " + error.message);
+            }
             btn.disabled = false;
             btn.innerText = "Paskelbti receptą";
         }
@@ -403,6 +409,7 @@
         const { error } = await _supabase.from('user_recipes').delete().eq('id', id);
         if (!error) {
             document.getElementById('recipe-content-area').innerHTML = ""; 
+            document.getElementById('recipes').value = "";
             alert("Ištrinta sėkmingai!");
         }
     }
